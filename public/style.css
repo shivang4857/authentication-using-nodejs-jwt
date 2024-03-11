@@ -1,0 +1,38 @@
+body{
+    background: pink;
+}
+
+input{
+    width: 261px;
+    height: 40px;
+    padding: 10px;
+    margin: 2vh;
+    border-radius: 3px;
+}
+button {
+    padding: auto;
+    height: 3vh;
+    width: 8vh;
+    margin: 23px;
+    border-radius: 18px;
+}
+user agent stylesheet
+b
+
+form{
+    
+    width: 20px;
+    height :20px ;
+    padding: 50px;
+    
+}
+
+
+.hello{
+    display:flex;
+    height:60vh;
+    width: 60vh;
+    background: rgb(200, 151, 239);
+    justify-content:baseline;
+    margin: 18vh;
+}
