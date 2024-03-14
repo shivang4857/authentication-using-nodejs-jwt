@@ -1,56 +1,113 @@
-import Express from "express";
+import express from "express";
 import path from "path";
 import mongoose from "mongoose";
+import cookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
-//connecting the database
 mongoose
   .connect("mongodb://127.0.0.1:27017", {
     dbName: "backend",
   })
-  .then(() => console.log("database connected"))
+  .then(() => console.log("Database Connected"))
   .catch((e) => console.log(e));
-// defining the schema
-const messageSchema = new mongoose.Schema({
+
+const userSchema = new mongoose.Schema({
   name: String,
   email: String,
+  password: String,
 });
-// making the collection or fancy  name model & passing the schema
-const Messge = mongoose.model("Mesaage", messageSchema);
 
-const app = Express();
-//using the middlewares
+const User = mongoose.model("User", userSchema);
+
+const app = express();
+
+// Using Middlewares
+app.use(express.static(path.join(path.resolve(), "public")));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Setting up View Engine
 app.set("view engine", "ejs");
-app.use(Express.static(path.join(path.resolve(), "public")));
-app.use(Express.urlencoded({ extended: true })); //gives the data of the form  which is on post method
-//by default each thing on the webpage is on the get method by default
 
-app.get("/", (req, res) => {
-  res.render("index");
+const isAuthenticated = async (req, res, next) => {
+  const { token } = req.cookies;
+  if (token) {
+    const decoded = jwt.verify(token, "sdjasdbajsdbjasd");
+
+    req.user = await User.findById(decoded._id);
+
+    next();
+  } else {
+    res.redirect("/login");
+  }
+};
+
+app.get("/", isAuthenticated, (req, res) => {
+  res.render("logout", { name: req.user.name });
 });
 
-app.get("/sucess", (req, res) => {
-    res.render("sucess");
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+app.get("/register", (req, res) => {
+  res.render("register");
+});
+
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  let user = await User.findOne({ email });
+
+  if (!user) return res.redirect("/register");
+
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch)
+    return res.render("login", { email, message: "Incorrect Password" });
+
+  const token = jwt.sign({ _id: user._id }, "sdjasdbajsdbjasd");
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 60 * 1000),
   });
-  
-
-app.get("/add",(req, res) => {
-  Messge.create({ name: "shivang", email: "shivang4857@gmail.com" }).then(
-    () => {
-      res.send("nice");
-    }
-  );
+  res.redirect("/");
 });
 
+app.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
 
+  let user = await User.findOne({ email });
+  if (user) {
+    return res.redirect("/login");
+  }
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-app.post("/", async(req, res) => {
-    const messagedata = {name:req.body.name , email: req.body.email}
-    await Messge.create(messagedata);
-    console.log(messagedata);
+  user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+  });
 
-  res.redirect("/sucess")
+  const token = jwt.sign({ _id: user._id }, "sdjasdbajsdbjasd");
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 60 * 1000),
+  });
+  res.redirect("/");
+});
+
+app.get("/logout", (req, res) => {
+  res.cookie("token", null, {
+    httpOnly: true,
+    expires: new Date(Date.now()),
+  });
+  res.redirect("/");
 });
 
 app.listen(5000, () => {
-  console.log("server is listsen ");
+  console.log("Server is working");
 });
